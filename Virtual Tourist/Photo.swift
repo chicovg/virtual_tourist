@@ -9,7 +9,6 @@
 import Foundation
 import CoreData
 
-
 class Photo: NSManagedObject {
     
     static let ENTITY_NAME: String = "Photo"
@@ -39,5 +38,9 @@ class Photo: NSManagedObject {
         if let pin = dictionary[Keys.pin] as? Pin {
             self.pin = pin
         }
+    }
+    
+    override func prepareForDeletion() {
+        ImageService.sharedInstance().removeImage(byObjectURL: self.objectID.URIRepresentation())
     }
 }

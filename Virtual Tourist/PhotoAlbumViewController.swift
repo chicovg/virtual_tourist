@@ -13,7 +13,6 @@ import CoreData
 class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate, NSFetchedResultsControllerDelegate {
     
     let kPhotoCollectionViewCellId = "photoCollectionViewCell"
-    let kPhotosPerPage: Int = 25
     
     @IBOutlet weak var mapView: MKMapView!
     @IBOutlet weak var photoCollectionView: UICollectionView!
@@ -22,8 +21,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     
     var coordinate: CLLocationCoordinate2D?
     var pin: Pin!
-    var page: Int = 1
-    var pages: Int = 1
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -40,28 +37,31 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         flowLayout.itemSize = CGSizeMake(dimension, dimension)
         
         // place pin and get photos
-        placePin()
-        if pin.hasPhotos {
-            fetchPhotos()
-        } else {
+        if !pin.hasPhotos {
             newCollectionButton.enabled = false
             searchPhotos()
         }
+        placePin()
+        fetchPhotos()
     }
     
     override func viewWillAppear(animated: Bool) {
         navigationController?.navigationBarHidden = false
+        
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: "handleFetchError", name: kFailedToFetchPhotosNotification, object: nil)
     }
     
     override func viewWillDisappear(animated: Bool) {
         navigationController?.navigationBarHidden = true
+        
+        NSNotificationCenter.defaultCenter().removeObserver(self)
     }
     
     // MARK: Actions
     @IBAction func getNewPhotoCollection(sender: UIBarButtonItem) {
         // remove current photos and fetch a new page
         removePhotos()
-        page = (page + 1 > pages) ? 1 : page + 1
+        pin.incrementPage()
         searchPhotos()
     }
     
@@ -89,7 +89,9 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     
     // MARK: NSFetchedResultsControllerDelegate
     func controllerDidChangeContent(controller: NSFetchedResultsController) {
+        print("content changed")
         fetchPhotos()
+        fetchPin()
         photoCollectionView.reloadData()
     }
     
@@ -108,7 +110,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         
         // get photo entity and use url to fetch image asyncronously
         let photo = fetchedResultsController.objectAtIndexPath(indexPath) as! Photo
-        ImageService.sharedInstance().getImageForUrl(photo.urlString) { (image) -> Void in
+        ImageService.sharedInstance().getImage(byObjectURL: photo.objectID.URIRepresentation(), orBy: photo.urlString) { (image) -> Void in
             if let image = image {
                 dispatch_async(dispatch_get_main_queue(), {() -> Void in
                     cell.photoImageView.image = image
@@ -126,10 +128,16 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         collectionView.reloadData()
     }
     
+    // MARK: Handle photo fetching errors
+    func handleFetchError(){
+        let alert = UIAlertController(title: "Error", message: "Could not fetch photos for location!", preferredStyle: UIAlertControllerStyle.Alert)
+        alert.addAction(UIAlertAction(title: "Dismiss", style: UIAlertActionStyle.Default, handler: nil))
+        presentViewController(alert, animated: true, completion: nil)
+    }
+    
     // MARK: Helpers
     private func placePin(){
         if let pin = pin {
-            print("lat: \(pin.latitude.doubleValue) long: \(pin.longitude.doubleValue)")
             let coordinate = CLLocationCoordinate2D(latitude: pin.latitude.doubleValue, longitude: pin.longitude.doubleValue)
             let annotation = LocationAnnotation(coordinate: coordinate)
             let span = MKCoordinateSpanMake(2.0, 2.0)
@@ -149,49 +157,42 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         }
     }
     
+    /** fetches pin from Core Data */
+    private func fetchPin(){
+        do {
+            try pin = sharedContext.existingObjectWithID(pin.objectID) as! Pin
+        } catch let error as NSError {
+            print("Error in fetchPin(): \(error)")
+        }
+    }
+    
     /** Searches Flickr for photos tagged with given latitude and longitude */
     private func searchPhotos() {
-        print("page: \(page) pages: \(pages)")
-        let request = FlickrSearchRequest(latitude: pin.latitude.doubleValue, longitude: pin.longitude.doubleValue,
-            page: page, perPage: kPhotosPerPage)
-        FlickrClient.sharedInstance().searchPhotosByLocation(request, completionHandler: { (response) -> Void in
-            if response.success {
-                self.page = response.page
-                self.pages = response.pages
-                for photoResult in response.photos {
-                    if let url = photoResult["url_s"] as? String {
-                        var dict = [
-                            Photo.Keys.urlString : url,
-                            Photo.Keys.title : "",
-                            Photo.Keys.pin : self.pin
-                        ]
-                        
-                        if let title = photoResult["title"] as? String {
-                            dict[Photo.Keys.title] = title
-                        }
-                        
-                        _ = Photo(dictionary: dict, context: self.sharedContext)
-                    }
-                }
-                self.pin.hasPhotos = true
-                self.saveContext()
+        print("page: \(pin.flickrPage) pages: \(pin.flickrPages)")
+        PhotoAlbumService.sharedInstance().fetchPhotos(forLocation: pin, photosPerPage: kPhotosPerPage) { () -> Void in
+            dispatch_async(dispatch_get_main_queue(), {() -> Void in
                 self.newCollectionButton.enabled = true
-            }
-        })
+            })
+        }
     }
     
     /** saves shared core data context */
     private func saveContext(){
+        CoreDataManager.sharedInstance().saveContext()
         do {
             try sharedContext.save()
         } catch {
-            print("error saving context")
+            let saveError = error as NSError
+            print("\(saveError)")
         }
     }
     
+    /** deletes all photos from the album */
     private func removePhotos(){
-        for photo in pin.photos {
-            sharedContext.deleteObject(photo)
+        if let photos = fetchedResultsController.fetchedObjects as? [Photo] {
+            for photo in photos {
+                sharedContext.deleteObject(photo)
+            }
         }
     }
 }

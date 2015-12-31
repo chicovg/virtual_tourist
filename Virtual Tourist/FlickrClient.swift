@@ -59,7 +59,6 @@ class FlickrClient {
                 response in
                 
                 if response.success {
-                    /* 6 - Parse the data (i.e. convert the data to JSON and look for values!) */
                     let parsedResult: AnyObject!
                     do {
                         parsedResult = try NSJSONSerialization.JSONObjectWithData(response.data!, options: .AllowFragments)
@@ -71,7 +70,7 @@ class FlickrClient {
                         return
                     }
                     
-                    let response = FlickrSearchResponse(json: parsedResult as! [String : AnyObject], page: 1, perPage: 10)
+                    let response = FlickrSearchResponse(json: parsedResult as! [String : AnyObject], page: searchRequest.page, perPage: searchRequest.perPage)
                     completionHandler(searchResponse: response)
                 } else {
                     print("An invalid or empty response was returned")

@@ -13,8 +13,13 @@ import CoreData
 class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetchedResultsControllerDelegate {
     
     let kCenterCoordinateKey = "CenterCoordinate"
-    let kRegionKey = "Region"
+    let kRegionSaved = "RegionSaved"
+    let kCenterLatKey = "CenterLatKey"
+    let kCenterLonKey = "CenterLonKey"
+    let kSpanLatKey = "SpanLatKey"
+    let kSpanLonKey = "SpanLonKey"
     let kSegueToPhotoAlbum = "segueToPhotoAlbumView"
+    let kCameraFileName = "map_camera_file"
 
     @IBOutlet weak var mapView: MKMapView!
     var currentPin : LocationAnnotation?
@@ -29,34 +34,32 @@ class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetched
         
         let gestureRecognizer = UILongPressGestureRecognizer(target: self, action: "handleLongPress:")
         mapView.addGestureRecognizer(gestureRecognizer)
-        
-        if let camera = NSKeyedUnarchiver.unarchiveObjectWithFile("camera_file") as? MKMapCamera {
-            mapView.camera = camera
-        } else {
-            // zoom to current location
-        }
     }
     
-    override func viewDidAppear(animated: Bool) {
-        print("viewDidAppear")
-        if let camera = NSKeyedUnarchiver.unarchiveObjectWithFile("camera_file") as? MKMapCamera {
-            mapView.camera = camera
+    override func viewWillAppear(animated: Bool) {
+        let userDefaults = NSUserDefaults.standardUserDefaults()
+
+        if userDefaults.boolForKey(kRegionSaved) {
+            let coordinate = CLLocationCoordinate2D(latitude: userDefaults.doubleForKey(kCenterLatKey), longitude: userDefaults.doubleForKey(kCenterLonKey))
+            let span = MKCoordinateSpanMake(userDefaults.doubleForKey(kSpanLatKey), userDefaults.doubleForKey(kSpanLonKey))
+            let region = MKCoordinateRegionMake(coordinate, span)
+            mapView.setRegion(region, animated: true)
         }
     }
     
     override func viewWillDisappear(animated: Bool) {
-        print("viewWillDisappear")
-        let camera = mapView.camera
-        NSKeyedArchiver.archiveRootObject(camera, toFile: "camera_file")
-    }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+        let region = mapView.region
+        let userDefaults = NSUserDefaults.standardUserDefaults()
+        
+        userDefaults.setBool(true, forKey: kRegionSaved)
+        userDefaults.setDouble(region.center.latitude, forKey: kCenterLatKey)
+        userDefaults.setDouble(region.center.longitude, forKey: kCenterLonKey)
+        userDefaults.setDouble(region.span.latitudeDelta, forKey: kSpanLatKey)
+        userDefaults.setDouble(region.span.longitudeDelta, forKey: kSpanLonKey)
+        super.viewWillDisappear(animated)
     }
     
     // MARK: navigation
-    
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
         if segue.identifier != nil && segue.identifier == kSegueToPhotoAlbum {
             if let pin = sender as? Pin, photoAlbumVC = segue.destinationViewController as? PhotoAlbumViewController {
@@ -67,13 +70,11 @@ class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetched
     }
     
     // MARK: CoreData context
-    
     var sharedContext: NSManagedObjectContext {
         return CoreDataManager.sharedInstance().managedObjectContext
     }
     
     // MARK: - Fetched Results Controller
-    
     lazy var fetchedResultsController: NSFetchedResultsController = {
         
         // Create the fetch request
@@ -90,14 +91,12 @@ class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetched
     } ()
     
     // MARK: NSFetchedResultsControllerDelegate
-    
     func controllerDidChangeContent(controller: NSFetchedResultsController) {
         fetchPins()
         setAnnotations()
     }
     
     // MARK: UIGestureRecognizer
-    
     func handleLongPress(recognizer: UIGestureRecognizer){
         let point = recognizer.locationInView(mapView)
         let coord = mapView.convertPoint(point, toCoordinateFromView: mapView)
@@ -117,10 +116,10 @@ class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetched
                 print("long press ended")
                 let dictionary = [
                     Pin.Keys.latitude : coord.latitude,
-                    Pin.Keys.longitude : coord.longitude,
-                    Pin.Keys.hasPhotos : false
+                    Pin.Keys.longitude : coord.longitude
                 ]
-                _ = Pin(dictionary: dictionary as! [String : AnyObject], context: sharedContext)
+                let pin = Pin(dictionary: dictionary, context: sharedContext)
+                self.fetchPhotos(pin)
                 CoreDataManager.sharedInstance().saveContext()
                 currentPin = nil
             
@@ -128,8 +127,7 @@ class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetched
         }
     }
     
-    // MARK: MKMapViewDelegate
-    
+    // MARK: MKMapViewDelegate    
     func mapView(mapView: MKMapView, annotationView view: MKAnnotationView, didChangeDragState newState: MKAnnotationViewDragState, fromOldState oldState: MKAnnotationViewDragState) {
         switch (newState) {
             case .Starting:
@@ -138,10 +136,6 @@ class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetched
                 view.dragState = .None
             default: break
         }
-    }
-    
-    func mapView(mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-        print("regionDidChangeAnimated")
     }
     
     func mapView(mapView: MKMapView, didSelectAnnotationView view: MKAnnotationView) {
@@ -175,6 +169,13 @@ class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetched
             return pin.latitude == (coordinate.latitude as NSNumber) &&
                 pin.longitude == (coordinate.longitude as NSNumber)
         }.first
+    }
+    
+    private func fetchPhotos(pin: Pin) {
+        print("page: \(pin.flickrPage) pages: \(pin.flickrPages)")
+        PhotoAlbumService.sharedInstance().fetchPhotos(forLocation: pin, photosPerPage: kPhotosPerPage) { () -> Void in
+            print("fetched photos")
+        }
     }
     
     

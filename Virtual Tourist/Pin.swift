@@ -17,13 +17,15 @@ class Pin: NSManagedObject {
     struct Keys {
         static let latitude = "latitude"
         static let longitude = "longitude"
-        static let hasPhotos = "hasPhoto"
+        static let flickrPage = "flickrPage"
+        static let flickrPages = "flickrPages"
     }
    
     @NSManaged var latitude: NSNumber
     @NSManaged var longitude: NSNumber
-    @NSManaged var hasPhotos: Bool
     @NSManaged var photos: [Photo]
+    @NSManaged var flickrPage: Int
+    @NSManaged var flickrPages: Int
 
     override init(entity: NSEntityDescription, insertIntoManagedObjectContext context: NSManagedObjectContext?) {
         super.init(entity: entity, insertIntoManagedObjectContext: context)
@@ -37,6 +39,23 @@ class Pin: NSManagedObject {
         
         latitude = dictionary[Keys.latitude] as! NSNumber
         longitude = dictionary[Keys.longitude] as! NSNumber
-        hasPhotos = dictionary[Keys.hasPhotos] as! Bool
+        if let flickrPage = dictionary[Keys.flickrPage] as? Int {
+            self.flickrPage = flickrPage
+        } else {
+            self.flickrPage = 1
+        }
+        if let flickrPages = dictionary[Keys.flickrPages] as? Int {
+            self.flickrPages = flickrPages
+        } else {
+            self.flickrPages = 1
+        }
+    }
+    
+    var hasPhotos: Bool {
+        return photos.count > 0
+    }
+    
+    func incrementPage(){
+        flickrPage = (flickrPage + 1 > flickrPages) ? 1 : flickrPage + 1
     }
 }

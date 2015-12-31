@@ -1,5 +1,5 @@
 //
-//  PhotoImageCache.swift
+//  ImageService.swift
 //  Virtual Tourist
 //
 //  Created by Victor Guthrie on 12/30/15.
@@ -23,47 +23,51 @@ class ImageService {
     private var inMemoryCache = NSCache()
     
     /** Get image from local cache, if it is not cached, dowload from Flickr */
-    func getImageForUrl(urlString: String, handler: (image: UIImage?) -> Void) {
-        if let url = NSURL(string: urlString), fileName = url.lastPathComponent {
+    func getImage(byObjectURL objectURL: NSURL, orBy urlString: String, callback: (image: UIImage?) -> Void) {
+        if let fileName = objectURL.lastPathComponent {
+            let path = fullPathForFile(fileName)
+            
             // if image is cached locally, get it, else fetch from flickr
-            if let image = imageWithFilename(fileName) {
-                handler(image: image)
+            if let image = imageWithPath(path) {
+                callback(image: image)
             } else {
                 FlickrClient.sharedInstance().getImage(urlString, completionHandler: { (response) -> Void in
                     if response.success && response.data != nil {
                         let image = UIImage(data: response.data!)
-                        handler(image: image)
-                        self.storeImage(image, withFileName: fileName)
+                        callback(image: image)
+                        self.storeImage(image, withPath: path)
                     } else {
-                        handler(image: nil)
-                        self.storeImage(nil, withFileName: fileName)
+                        callback(image: nil)
+                        self.storeImage(nil, withPath: path)
                     }
                 })
             }
         }
-        handler(image: nil)
+        
+        callback(image: nil)
     }
     
-    // TODO need remove function
+    /** Removes image from cache and file system */
+    func removeImage(byObjectURL objectURL: NSURL) {
+        print("deleting: \(objectURL)")
+        if let fileName = objectURL.lastPathComponent {
+            let path = fullPathForFile(fileName)
+            storeImage(nil, withPath: path)
+        }
+    }
     
     // MARK: Helpers
-    private func imageWithFilename(fileName: String?) -> UIImage? {
-        
-        if let fileName = fileName {
-            let path = fullPathForFile(fileName)
-            if let image = inMemoryCache.objectForKey(path) as? UIImage {
-                return image
-            } else if let data = NSData(contentsOfFile: path) {
-                return UIImage(data: data)
-            }
+    private func imageWithPath(path: String) -> UIImage? {
+        if let image = inMemoryCache.objectForKey(path) as? UIImage {
+            return image
+        } else if let data = NSData(contentsOfFile: path) {
+            return UIImage(data: data)
         }
         
         return nil
     }
     
-    private func storeImage(image: UIImage?, withFileName fileName: String) {
-        let path = fullPathForFile(fileName)
-        
+    private func storeImage(image: UIImage?, withPath path: String) {
         if let image = image {
             inMemoryCache.setObject(image, forKey: path)
             let data = UIImagePNGRepresentation(image)!
