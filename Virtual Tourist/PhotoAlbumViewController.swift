@@ -13,6 +13,8 @@ import CoreData
 class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate, NSFetchedResultsControllerDelegate {
     
     let kPhotoCollectionViewCellId = "photoCollectionViewCell"
+    let kNoPhotosMessage = "No photos available."
+    let kSearchingPhotosMessage = "Searching Flickr..."
     
     @IBOutlet weak var mapView: MKMapView!
     @IBOutlet weak var photoCollectionView: UICollectionView!
@@ -26,20 +28,15 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         super.viewDidLoad()
         
         // set up collection view
-        photoCollectionView.dataSource = self
-        photoCollectionView.delegate = self
-        photoCollectionView!.registerClass(PhotoCollectionViewCell.self, forCellWithReuseIdentifier: kPhotoCollectionViewCellId)
-        
-        let space: CGFloat = 3.0
-        let dimension = (self.view.frame.size.width - (2 * space)) / 3.0
-        
-        flowLayout.minimumInteritemSpacing = space
-        flowLayout.itemSize = CGSizeMake(dimension, dimension)
+        setupCollectionView()
         
         // place pin and get photos
         if !pin.hasPhotos {
             newCollectionButton.enabled = false
             searchPhotos()
+            photoCollectionView.backgroundView?.hidden = false
+        } else {
+            photoCollectionView.backgroundView?.hidden = true
         }
         placePin()
         fetchPhotos()
@@ -92,6 +89,9 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         print("content changed")
         fetchPhotos()
         fetchPin()
+//        let photoCount = fetchedResultsController.fetchedObjects?.count
+//        self.photoCollectionView.backgroundView!.hidden = photoCount > 0
+//        (self.photoCollectionView.backgroundView as! UILabel).text = self.kNoPhotosMessage
         photoCollectionView.reloadData()
     }
     
@@ -132,10 +132,38 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     func handleFetchError(){
         let alert = UIAlertController(title: "Error", message: "Could not fetch photos for location!", preferredStyle: UIAlertControllerStyle.Alert)
         alert.addAction(UIAlertAction(title: "Dismiss", style: UIAlertActionStyle.Default, handler: nil))
-        presentViewController(alert, animated: true, completion: nil)
+        presentViewController(alert, animated: true, completion: {
+            Void in
+            (self.photoCollectionView.backgroundView as! UILabel).text = self.kNoPhotosMessage
+            self.photoCollectionView.backgroundView!.hidden = false
+        })
+        
     }
     
     // MARK: Helpers
+    
+    /** Set up collection view */
+    private func setupCollectionView(){
+        photoCollectionView.dataSource = self
+        photoCollectionView.delegate = self
+        photoCollectionView!.registerClass(PhotoCollectionViewCell.self, forCellWithReuseIdentifier: kPhotoCollectionViewCellId)
+        
+        // setup flow layout
+        let space: CGFloat = 3.0
+        let dimension = (self.view.frame.size.width - (2 * space)) / 3.0
+        flowLayout.minimumInteritemSpacing = space
+        flowLayout.itemSize = CGSizeMake(dimension, dimension)
+        
+        // Add a background view
+        let backgroundView = UILabel(frame: CGRect(x: 0, y: 0, width: photoCollectionView.frame.width, height: 40.0))
+        backgroundView.text = kNoPhotosMessage
+        backgroundView.textAlignment = .Center
+        
+        photoCollectionView.backgroundView = backgroundView
+    }
+    
+    
+    /** places pin on map and zooms */
     private func placePin(){
         if let pin = pin {
             let coordinate = CLLocationCoordinate2D(latitude: pin.latitude.doubleValue, longitude: pin.longitude.doubleValue)
@@ -169,9 +197,13 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     /** Searches Flickr for photos tagged with given latitude and longitude */
     private func searchPhotos() {
         print("page: \(pin.flickrPage) pages: \(pin.flickrPages)")
-        PhotoAlbumService.sharedInstance().fetchPhotos(forLocation: pin, photosPerPage: kPhotosPerPage) { () -> Void in
+        (photoCollectionView.backgroundView as! UILabel).text = kSearchingPhotosMessage
+        photoCollectionView.backgroundView!.hidden = false
+        PhotoAlbumService.sharedInstance().fetchPhotos(forLocation: pin, photosPerPage: kPhotosPerPage) { (photoCount) -> Void in
             dispatch_async(dispatch_get_main_queue(), {() -> Void in
                 self.newCollectionButton.enabled = true
+                self.photoCollectionView.backgroundView!.hidden = photoCount > 0
+                (self.photoCollectionView.backgroundView as! UILabel).text = self.kNoPhotosMessage
             })
         }
     }

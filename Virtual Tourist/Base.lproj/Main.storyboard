@@ -59,7 +59,7 @@
                                 </constraints>
                             </mapView>
                             <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" misplaced="YES" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="LPe-6j-m2s">
-                                <rect key="frame" x="0.0" y="239" width="600" height="361"/>
+                                <rect key="frame" x="0.0" y="239" width="600" height="317"/>
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
                                 <collectionViewFlowLayout key="collectionViewLayout" minimumLineSpacing="10" minimumInteritemSpacing="10" id="Qqy-oM-U15">
                                     <size key="itemSize" width="50" height="50"/>
@@ -108,7 +108,7 @@
                             <constraint firstAttribute="trailingMargin" secondItem="oft-Sz-lqq" secondAttribute="trailing" constant="-20" id="1Dv-S1-c0m"/>
                             <constraint firstItem="7F0-vu-MSP" firstAttribute="leading" secondItem="fms-Cu-QxA" secondAttribute="leadingMargin" constant="-20" id="BcW-gx-4o9"/>
                             <constraint firstItem="oft-Sz-lqq" firstAttribute="top" secondItem="CwG-Ag-p8c" secondAttribute="bottom" id="SXd-WF-aAk"/>
-                            <constraint firstItem="Q1X-NC-D5W" firstAttribute="top" secondItem="LPe-6j-m2s" secondAttribute="bottom" id="ZA2-VJ-vaj"/>
+                            <constraint firstItem="Q1X-NC-D5W" firstAttribute="top" secondItem="LPe-6j-m2s" secondAttribute="bottom" constant="44" id="ZA2-VJ-vaj"/>
                             <constraint firstItem="LPe-6j-m2s" firstAttribute="leading" secondItem="fms-Cu-QxA" secondAttribute="leadingMargin" constant="-20" id="ZsY-1l-02Z"/>
                             <constraint firstItem="LPe-6j-m2s" firstAttribute="top" secondItem="oft-Sz-lqq" secondAttribute="bottom" id="afx-cN-gDb"/>
                             <constraint firstAttribute="trailingMargin" secondItem="LPe-6j-m2s" secondAttribute="trailing" constant="-20" id="gu6-BP-3S9"/>

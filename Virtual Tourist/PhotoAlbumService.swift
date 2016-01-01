@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreData
+import UIKit
 
 let kPhotosPerPage: Int = 25
 let kFailedToFetchPhotosNotification = "PhotosDeleted"
@@ -29,9 +30,10 @@ class PhotoAlbumService {
     }
     
     /** Fetchs photo data for pin and saves it to coredata */
-    func fetchPhotos(forLocation pin: Pin, photosPerPage: Int, callback: () -> Void) {
+    func fetchPhotos(forLocation pin: Pin, photosPerPage: Int, callback: (photoCount: Int) -> Void) {
         let request = FlickrSearchRequest(latitude: pin.latitude.doubleValue, longitude: pin.longitude.doubleValue,
             page: pin.flickrPage, perPage: photosPerPage)
+        UIApplication.sharedApplication().networkActivityIndicatorVisible = true
         FlickrClient.sharedInstance().searchPhotosByLocation(request, completionHandler: { (response) -> Void in
             if response.success {
                 pin.flickrPage = response.page
@@ -51,11 +53,12 @@ class PhotoAlbumService {
                         photo.pin = pin
                     }
                 }
-                callback()
+                callback(photoCount: response.photos.count)
                 self.saveContext()
             } else {
                 NSNotificationCenter.defaultCenter().postNotificationName(kFailedToFetchPhotosNotification, object: nil)
             }
+            UIApplication.sharedApplication().networkActivityIndicatorVisible = false
         })
     }
     

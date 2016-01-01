@@ -143,8 +143,6 @@ class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetched
         if let annotation = view.annotation as? LocationAnnotation, pin = getPinForCoordinate(annotation.coordinate) {
             print("lat: \(pin.latitude.doubleValue) long: \(pin.longitude.doubleValue)")
             performSegueWithIdentifier(kSegueToPhotoAlbum, sender: pin)
-        } else {
-            // error?
         }
     }
     
@@ -173,8 +171,8 @@ class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetched
     
     private func fetchPhotos(pin: Pin) {
         print("page: \(pin.flickrPage) pages: \(pin.flickrPages)")
-        PhotoAlbumService.sharedInstance().fetchPhotos(forLocation: pin, photosPerPage: kPhotosPerPage) { () -> Void in
-            print("fetched photos")
+        PhotoAlbumService.sharedInstance().fetchPhotos(forLocation: pin, photosPerPage: kPhotosPerPage) { (photoCount) -> Void in
+            print("fetched \(photoCount) photos")
         }
     }
     
