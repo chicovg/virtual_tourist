@@ -19,7 +19,6 @@ class LocationMapViewController : UIViewController, MKMapViewDelegate, NSFetched
     let kSpanLatKey = "SpanLatKey"
     let kSpanLonKey = "SpanLonKey"
     let kSegueToPhotoAlbum = "segueToPhotoAlbumView"
-    let kCameraFileName = "map_camera_file"
 
     @IBOutlet weak var mapView: MKMapView!
     var currentPin : LocationAnnotation?

@@ -10,8 +10,8 @@ import Foundation
 import CoreData
 import UIKit
 
-let kPhotosPerPage: Int = 25
-let kFailedToFetchPhotosNotification = "PhotosDeleted"
+let kPhotosPerPage: Int = 27
+let kFailedToFetchPhotosNotification = "PhotoFetchFailed"
 
 class PhotoAlbumService {
     

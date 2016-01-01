@@ -89,9 +89,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         print("content changed")
         fetchPhotos()
         fetchPin()
-//        let photoCount = fetchedResultsController.fetchedObjects?.count
-//        self.photoCollectionView.backgroundView!.hidden = photoCount > 0
-//        (self.photoCollectionView.backgroundView as! UILabel).text = self.kNoPhotosMessage
         photoCollectionView.reloadData()
     }
     

@@ -10,7 +10,7 @@ import Foundation
 
 class FlickrClient {
     
-    let kTimeoutInterval = 10.0
+    let kTimeoutInterval = 5.0
     let BASE_URL = "https://api.flickr.com/services/rest/"
     let METHOD_PARAM = "method"
     let METHOD_NAME = "flickr.photos.search"
